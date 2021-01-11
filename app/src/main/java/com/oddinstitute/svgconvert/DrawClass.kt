@@ -9,20 +9,11 @@ import android.view.View
 import android.view.View.OnTouchListener
 
 
-class PolygonData
-{
-    var corners: ArrayList<PointF> = arrayListOf()
-}
-
-class PolygonPath
-{
-    lateinit var mainPath: Path
-    lateinit var cornersPaths: ArrayList<Path>
-}
-
 class DrawView : View
 {
-    lateinit var mainPaint: Paint
+    var artworkData: ArtworkData = ArtworkData()
+
+    var mainPaint: Paint = Paint()
 
     var cornerSelectionHandle: RectF? = null
     var cornerEditingMode = false
@@ -30,9 +21,9 @@ class DrawView : View
     var polygonSelectionMode = true
 
 
-    var selectedPolygon: PolygonPath? = null
+    var selectedPolygon: PolygonAllPaths? = null
 
-    var polygonsPaths: ArrayList<PolygonPath> = arrayListOf()
+
 //    var selectedPolygon: PolygonPath? = null
 
 
@@ -40,7 +31,7 @@ class DrawView : View
 
     var selectedCornerIndex: Int = -1
 
-    lateinit var polygonsDataArray: ArrayList<PolygonData>
+//    lateinit var polygonsDataArray: ArrayList<PolygonData>
 
 
     var clear = false
@@ -48,9 +39,21 @@ class DrawView : View
 
     @SuppressLint("ClickableViewAccessibility")
     constructor(context: Context?,
-                polygons: ArrayList<PolygonData>) : super(context)
+                artworkData: ArtworkData) : super(context)
     {
-        init(polygons)
+        this.artworkData = artworkData
+
+
+        mainPaint = Paint()
+//        cornersPaint = Paint ()
+        mainPaint.isAntiAlias = true
+
+
+        makeAllPaths()
+
+
+        this.setOnTouchListener(onTouchListener())
+//        this.setOnTouchListener(cornerTouchListener())
     }
 
 
@@ -72,25 +75,13 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
  */
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun init(polygonsData: ArrayList<PolygonData>)
-    {
-        this.polygonsDataArray = polygonsData
-
-
-        mainPaint = Paint()
-//        cornersPaint = Paint ()
-        mainPaint.isAntiAlias = true
-
-
-        makeAllPaths()
-
-
-        this.setOnTouchListener(onTouchListener())
-//        this.setOnTouchListener(cornerTouchListener())
-
-
-    }
+//    @SuppressLint("ClickableViewAccessibility")
+//    private fun init(polygonsData: ArrayList<PolygonData>)
+//    {
+//
+//
+//
+//    }
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -151,7 +142,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                                                                  touchY))
                             {
                                 // we were in corner editing
-                                    // let's go out now
+                                // let's go out now
                                 cornerEditingMode = false
                                 polygonSelectionMode = true
                                 true
@@ -173,7 +164,8 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                                 if (pathBounds.contains(touchX,
                                                         touchY))
                                 {
-                                    Log.d("MyTag", "Index is: $selectedCornerIndex")
+                                    Log.d("MyTag",
+                                          "Index is: $selectedCornerIndex")
 
                                     selectedCornerIndex = i
                                     this.invalidate()
@@ -193,8 +185,8 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                                 PointF(touchX,
                                        touchY)
 
-                        this.polygonsDataArray[selectedPolygonIndex].corners[selectedCornerIndex] =
-                                newCorner
+                        this.artworkData.polygons[selectedPolygonIndex].data.pathData[selectedPolygonIndex] = newCorner
+//                        this.polygonsDataArray[selectedPolygonIndex].pathData[selectedCornerIndex] = newCorner
 
 //                        Log.d("MyTag", "Moving corner to: $touchX and $touchY ")
                         this.invalidate()
@@ -214,7 +206,8 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
 
             this.invalidate()
-            Log.d("MyTag", "\npolygon Selection: $polygonSelectionMode\ncorner editing: $cornerEditingMode\nSelection handle: $cornerSelectionHandle")
+            Log.d("MyTag",
+                  "\npolygon Selection: $polygonSelectionMode\ncorner editing: $cornerEditingMode\nSelection handle: $cornerSelectionHandle")
 
 
             true
@@ -226,10 +219,12 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
     {
         cornerSelectionHandle = null
 
-        for (i in 0 until polygonsPaths.count())
+        for (i in 0 until artworkData.polygons.count())
         {
-            val polygon = polygonsPaths[i]
-            val polygonPath = polygon.mainPath
+            val polygon = artworkData.polygons[i]
+            val polygonAllPaths = polygon.polygonAllPaths
+            val polygonPath = polygonAllPaths.mainPath
+
             val pathBounds = RectF()
             polygonPath.computeBounds(pathBounds,
                                       true)
@@ -238,7 +233,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                                     y))
             {
                 selectedPolygonIndex = i
-                selectedPolygon = polygonsPaths[selectedPolygonIndex]
+                selectedPolygon = polygonAllPaths
 
                 return
             }
@@ -247,12 +242,10 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
     }
 
 
-
-
-
     fun cleanCanvas(mCanvas: Canvas)
     {
-        polygonsPaths = arrayListOf()
+        // clear and refresh paths
+        artworkData.clearPaths()
 
         mainPaint.color = Color.TRANSPARENT
         mCanvas.drawPaint(mainPaint)
@@ -261,15 +254,18 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
     fun makeAllPaths()
     {
-        polygonsPaths.clear()
-        for (polygonData in polygonsDataArray)
+        artworkData.clearPaths()
+
+        for (i in 0 until artworkData.polygons.count())
         {
-            // CORNERS
+            val polygonData = artworkData.polygons[i].data
+
+            // First draw the CORNERS
             val cornerSize: Float = 10f
             val cornerRadius: Float = 7f
             var cornersPaths: ArrayList<Path> = arrayListOf()
 
-            for (corner in polygonData.corners)
+            for (corner in polygonData.pathData)
             {
                 val cornerPoint = RectF(corner.x - cornerSize,
                                         corner.y + cornerSize,
@@ -286,29 +282,30 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
             }
 
 
-            // MAIN
+            // Next, draw the MAIN Path
             var mainPath = Path()
             mainPath.fillType = Path.FillType.EVEN_ODD
 
-            mainPath.moveToPoint(polygonData.corners[0])
-            mainPath.lineToPoint(polygonData.corners[1])
-            mainPath.lineToPoint(polygonData.corners[2])
-            mainPath.lineToPoint(polygonData.corners[3])
+            mainPath.moveToPoint(polygonData.pathData[0])
+            mainPath.lineToPoint(polygonData.pathData[1])
+            mainPath.lineToPoint(polygonData.pathData[2])
+            mainPath.lineToPoint(polygonData.pathData[3])
+            mainPath.lineToPoint(polygonData.pathData[4])
             mainPath.close()
 
-            val newPolygon = PolygonPath()
-            newPolygon.mainPath = mainPath
-            newPolygon.cornersPaths = cornersPaths
+            val polygonPath = PolygonAllPaths()
+            polygonPath.mainPath = mainPath
+            polygonPath.cornersPaths = cornersPaths
 
-            polygonsPaths.add(newPolygon)
+            artworkData.polygons[i].polygonAllPaths = polygonPath
         }
 
-
-        // if we are in the corner editing mode
+        // if we are in the corner editing mode and moved
         // we have to update the selected polygon
         if (cornerEditingMode)
         {
-            selectedPolygon = polygonsPaths[selectedPolygonIndex]
+            selectedPolygon = artworkData.polygons[selectedPolygonIndex].polygonAllPaths
+//            selectedPolygon = polygonsPaths[selectedPolygonIndex]
         }
     }
 
@@ -327,14 +324,16 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
         makeAllPaths()
 
-        for (each in polygonsPaths)
+        // drawing all paths
+        for (each in artworkData.polygons)
         {
-            val mainPath = each.mainPath
-            styleFillPaint()
+            val mainPath = each.polygonAllPaths.mainPath
+            val polygonData = each.data
+            styleFillPaint(polygonData)
             canvas.drawPath(mainPath,
                             mainPaint)
 
-            styleBorderPaint()
+            styleBorderPaint(polygonData)
             canvas.drawPath(mainPath,
                             mainPaint)
         }
@@ -363,7 +362,10 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         if (cornerEditingMode)
         {
 //            Log.d("MyTag", "We are in corner Editing mode")
-            val polygonPath = polygonsPaths[selectedPolygonIndex]
+            val polygonPath = artworkData.polygons[selectedPolygonIndex].polygonAllPaths
+
+
+//            val polygonPath = polygonsPaths[selectedPolygonIndex]
 
             for (i in 0 until polygonPath.cornersPaths.count())
             {
@@ -389,10 +391,10 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         drawCornerSelectionHandle()
 
         // DRAW AND RETURN THE BORDER
-        val polygon = polygonsPaths[selectedPolygonIndex].mainPath
+        val polygonMainPath = artworkData.polygons[selectedPolygonIndex].polygonAllPaths.mainPath
         val pathBounds = RectF()
-        polygon.computeBounds(pathBounds,
-                              true)
+        polygonMainPath.computeBounds(pathBounds,
+                                      true)
 
         val rectf = RectF(pathBounds.left - 10f,
                           pathBounds.top - 10f,
@@ -406,9 +408,11 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         if (selectedPolygonIndex == -1)
             cornerSelectionHandle = null
 
-        val polygon = polygonsPaths[selectedPolygonIndex].mainPath
+        val polygonMainPath = artworkData.polygons[selectedPolygonIndex].polygonAllPaths.mainPath
+
+//        val polygon = polygonsPaths[selectedPolygonIndex].mainPath
         val pathBounds = RectF()
-        polygon.computeBounds(pathBounds,
+        polygonMainPath.computeBounds(pathBounds,
                               true)
 
         val height = pathBounds.bottom - pathBounds.top
@@ -436,13 +440,13 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         mainPaint.strokeCap = Paint.Cap.ROUND
     }
 
-    fun styleBorderPaint()
+    fun styleBorderPaint(polygonData: PolygonData)
     {
         // stroke
         mainPaint.style = Paint.Style.STROKE
-        mainPaint.strokeWidth = 2f
-        mainPaint.color = Color.BLACK
-        mainPaint.strokeCap = Paint.Cap.ROUND
+        mainPaint.strokeWidth = polygonData.strokeWidth
+        mainPaint.color = polygonData.strokeColor
+        mainPaint.strokeCap = polygonData.strokeLineCap
     }
 
     fun styleSelectionBorderPaint()
@@ -465,23 +469,11 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         mainPaint.strokeCap = Paint.Cap.ROUND
     }
 
-    fun styleFillPaint()
+    fun styleFillPaint(polygonData: PolygonData)
     {
         // fill
         mainPaint.style = Paint.Style.FILL
-        mainPaint.color = Color.MAGENTA
-        mainPaint.strokeCap = Paint.Cap.ROUND
+        mainPaint.color = polygonData.fillColor
     }
 }
 
-fun Path.moveToPoint(point: PointF)
-{
-    this.moveTo(point.x,
-                point.y)
-}
-
-fun Path.lineToPoint(point: PointF)
-{
-    this.lineTo(point.x,
-                point.y)
-}

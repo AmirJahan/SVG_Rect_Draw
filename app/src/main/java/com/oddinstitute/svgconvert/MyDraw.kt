@@ -62,10 +62,10 @@ class MyDraw  : View
                 PointF(100f,
                        300f)
 
-        polygon.corners.add(point1)
-        polygon.corners.add(point2)
-        polygon.corners.add(point3)
-        polygon.corners.add(point4)
+        polygon.pathData.add(point1)
+        polygon.pathData.add(point2)
+        polygon.pathData.add(point3)
+        polygon.pathData.add(point4)
 
 
 //        strokePaint = Paint()
@@ -115,6 +115,7 @@ class MyDraw  : View
         // fill
         paint.style = Paint.Style.FILL
         paint.color = Color.MAGENTA
+
         canvas.drawPath(path,
                         paint)
 
