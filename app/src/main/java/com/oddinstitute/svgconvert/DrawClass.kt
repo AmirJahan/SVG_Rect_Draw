@@ -27,6 +27,8 @@ class DrawView : View
     var cornerSelectionHandle: RectF? = null
     var cornerEditingMode = false
 
+    var polygonSelectionMode = true
+
 
     var selectedPolygon: PolygonPath? = null
 
@@ -98,80 +100,84 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
             val touchX = event.x
             val touchY = event.y
+
             when (event.action and MotionEvent.ACTION_MASK)
             {
                 MotionEvent.ACTION_DOWN ->
                 {
-                    when
+                    // We are either in poly selection mode or corner editing mode
+                    // the default is polygon selection mode
+                    if (polygonSelectionMode)
                     {
-                        cornerEditingMode ->
-                        {
-                            // In Corner Editing Mode, we tapped don the selection handle
-                            cornerSelectionHandle.let {
-                                if (cornerSelectionHandle!!.contains(touchX,
-                                                                     touchY))
-                                {
-                                    cornerEditingMode = false
-                                    true
-                                }
-                            }
-
-                            // In corner Editing Mode, we didn't touch the corner
-                            // now, we have to deal with corners
-                            selectedPolygon.let {
-                                val cornersPaths = selectedPolygon!!.cornersPaths
-
-                                for (i in 0 until cornersPaths.count())
-                                {
-                                    val corner = cornersPaths[i]
-                                    val pathBounds = RectF()
-                                    corner.computeBounds(pathBounds,
-                                                         true)
-
-                                    if (pathBounds.contains(touchX,
-                                                            touchY))
-                                    {
-                                        // re-draw
-//                            editingCornerState = true
-                                        Log.d("MyTag",
-                                              "Found Corner at: $touchX and $touchY")
-
-                                        selectedCornerIndex = i
-                                        this.invalidate()
-                                    }
-                                }
-                            }
-
-
-
-                        }
-                        // no polygons selected
-                        selectedPolygonIndex == -1 ->
+                        // no polygon selected
+                        if (selectedPolygonIndex == -1)
                         {
                             polySelection(touchX,
                                           touchY)
                         }
-                        // some polygon selected
-                        else ->
+                        else
                         {
+                            // some polygon selected
                             cornerSelectionHandle.let {
                                 if (cornerSelectionHandle!!.contains(touchX,
                                                                      touchY))
                                 {
-                                    // we touched a handle, let's go corner editing mode
+                                    // Che if we touched a handle, let's go corner editing mode
                                     cornerEditingMode = true
+                                    // so no more polygon selection
+                                    polygonSelectionMode = false
                                 }
                                 else
                                 {
-                                    // we haven't touched the corner
-                                    // so, let's drop everything
+                                    // we haven't touched the handle
+                                    // so, let's drop everything back to the default
                                     selectedPolygonIndex = -1
                                     cornerEditingMode = false
                                     cornerSelectionHandle = null
                                     selectedPolygon = null
 
+                                    polygonSelectionMode = true
                                     polySelection(touchX,
                                                   touchY)
+                                }
+                            }
+                        }
+                    }
+                    else if (cornerEditingMode)
+                    {
+                        // In Corner Editing Mode, check if we tapped don the selection handle
+                        cornerSelectionHandle.let {
+                            if (cornerSelectionHandle!!.contains(touchX,
+                                                                 touchY))
+                            {
+                                // we were in corner editing
+                                    // let's go out now
+                                cornerEditingMode = false
+                                polygonSelectionMode = true
+                                true
+                            }
+                        }
+
+                        // In corner Editing Mode, we didn't touch the handle
+                        // now, we have to deal with corners
+                        selectedPolygon.let {
+                            val cornersPaths = selectedPolygon!!.cornersPaths
+
+                            for (i in 0 until cornersPaths.count())
+                            {
+                                val corner = cornersPaths[i]
+                                val pathBounds = RectF()
+                                corner.computeBounds(pathBounds,
+                                                     true)
+
+                                if (pathBounds.contains(touchX,
+                                                        touchY))
+                                {
+                                    Log.d("MyTag", "Index is: $selectedCornerIndex")
+
+                                    selectedCornerIndex = i
+                                    this.invalidate()
+                                    true
                                 }
                             }
                         }
@@ -180,17 +186,17 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
                 MotionEvent.ACTION_MOVE ->
                 {
-
-                    Log.d("MyTag", "Selected corner is: $selectedCornerIndex")
+//                    Log.d("MyTag", "Selected corner is: $selectedCornerIndex")
                     if (selectedCornerIndex != -1)
                     {
-                        val newCorner = PointF(touchX, touchY)
+                        val newCorner =
+                                PointF(touchX,
+                                       touchY)
 
                         this.polygonsDataArray[selectedPolygonIndex].corners[selectedCornerIndex] =
                                 newCorner
 
-                        Log.d("MyTag",
-                              "Moving corner to: $touchX and $touchY ")
+//                        Log.d("MyTag", "Moving corner to: $touchX and $touchY ")
                         this.invalidate()
                     }
                 }
@@ -200,7 +206,6 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                 {
                     if (selectedCornerIndex != -1)
                     {
-//                    editingCornerState = false
                         selectedCornerIndex = -1
                         this.invalidate()
                     }
@@ -209,6 +214,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
 
             this.invalidate()
+            Log.d("MyTag", "\npolygon Selection: $polygonSelectionMode\ncorner editing: $cornerEditingMode\nSelection handle: $cornerSelectionHandle")
 
 
             true
@@ -258,7 +264,6 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         polygonsPaths.clear()
         for (polygonData in polygonsDataArray)
         {
-
             // CORNERS
             val cornerSize: Float = 10f
             val cornerRadius: Float = 7f
@@ -296,6 +301,14 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
             newPolygon.cornersPaths = cornersPaths
 
             polygonsPaths.add(newPolygon)
+        }
+
+
+        // if we are in the corner editing mode
+        // we have to update the selected polygon
+        if (cornerEditingMode)
+        {
+            selectedPolygon = polygonsPaths[selectedPolygonIndex]
         }
     }
 
@@ -338,8 +351,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
         cornerSelectionHandle?.let {
             styleSelectionHandlePaint()
-            Log.d("MyTag",
-                  "There is Handle")
+//            Log.d("MyTag", "There is Handle")
 
             canvas.drawRoundRect(cornerSelectionHandle!!,
                                  8f,
@@ -350,7 +362,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
         if (cornerEditingMode)
         {
-            Log.d("MyTag", "We are in corner Editing mode")
+//            Log.d("MyTag", "We are in corner Editing mode")
             val polygonPath = polygonsPaths[selectedPolygonIndex]
 
             for (i in 0 until polygonPath.cornersPaths.count())
@@ -360,7 +372,6 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
                 if (i == selectedCornerIndex)
                     styleSelectedCornerPaint()
-
 
                 canvas.drawPath(corner,
                                 mainPaint)

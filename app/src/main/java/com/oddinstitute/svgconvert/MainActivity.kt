@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity()
         val poly2 = makePolygonFromFile(1.8f)
 
 
-        val polies = arrayListOf(poly1, poly2)
+        val polies = arrayListOf(poly1 , poly2)
 
         val drawingView = DrawView(this, polies)
         boom.addView(drawingView)
