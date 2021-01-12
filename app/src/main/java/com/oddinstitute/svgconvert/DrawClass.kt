@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
+import kotlin.math.log
 
 
 class DrawView : View
@@ -84,6 +85,31 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 //    }
 
 
+    var dX = 0f
+    var dY = 0f
+
+    fun onTouch(view: View, event: MotionEvent): Boolean
+    {
+        when (event.action)
+        {
+            MotionEvent.ACTION_DOWN ->
+            {
+                dX = view.x - event.rawX
+                dY = view.y - event.rawY
+            }
+            MotionEvent.ACTION_MOVE -> view.animate()
+                    .x(event.rawX + dX)
+                    .y(event.rawY + dY)
+                    .setDuration(0)
+                    .start()
+            else -> return false
+        }
+        return true
+    }
+
+    var xStart = 0f
+    var yStart = 0f
+
     @SuppressLint("ClickableViewAccessibility")
     private fun onTouchListener(): OnTouchListener?
     {
@@ -96,6 +122,10 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
             {
                 MotionEvent.ACTION_DOWN -> // select something
                 {
+                    xStart = event.rawX
+                    yStart = event.rawY
+
+
                     // We are either in poly selection mode or corner editing mode
                     // the default is polygon selection mode
                     if (polygonSelectionMode)
@@ -108,7 +138,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                         }
                         else
                         {
-                            switchPolySelection (event)
+                            switchPolySelection(event)
                             // some polygon selected
 //                            cornerSelectionHandle.let {
 //                                if (cornerSelectionHandle!!.contains(touchX,
@@ -189,16 +219,27 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 
                 MotionEvent.ACTION_MOVE ->
                 {
+                    val deltaX = event.rawX - xStart
+                    val deltaY = event.rawY - yStart
+                    xStart = event.rawX
+                    yStart = event.rawY
+
+
+                    Log.d("MyTag", "\nDelta X is: $deltaX\nDelta Y is: $deltaY")
                     // here, we are moving a corner
-                    if (selectedCornerIndex != -1)
+
+
+                    // a polygon is selected but we hhave NOT entered corner editing mode
+                    if (selectedPolygonIndex != -1 && !cornerEditingMode)
+                    {
+                        moveAllCornersTo(deltaX, deltaY)
+                    }
+                    // corner is selected
+                    else if (selectedCornerIndex != -1)
                     {
                         moveCorner(event)
                     }
-                    // we are moving a polygons now
-                    else if (selectedPolygonIndex != -1)
-                    {
-                        
-                    }
+
 
 //                        val newCorner = PointF(touchX, touchY)
 //                        this.artworkData.polygons[selectedPolygonIndex].data.pathData[selectedCornerIndex] =
@@ -221,7 +262,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         }
     }
 
-    fun pickCorner (event: MotionEvent)
+    fun pickCorner(event: MotionEvent)
     {
         val touchX = event.x
         val touchY = event.y
@@ -272,7 +313,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         }
     }
 
-    fun switchPolySelection (event: MotionEvent)
+    fun switchPolySelection(event: MotionEvent)
     {
         val touchX = event.x
         val touchY = event.y
@@ -303,17 +344,32 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         }
     }
 
-    fun moveCorner (event: MotionEvent)
+
+    fun moveAllCornersTo (deltaX: Float, deltaY: Float)
+    {
+        val pathData = this.artworkData.polygons[selectedPolygonIndex].data.pathData
+        var newPathData: ArrayList<PointF> = arrayListOf()
+        for (i in 0 until pathData.count())
+        {
+            val corner = pathData[i]
+            val newCorner = PointF (corner.x + deltaX, corner.y + deltaY)
+            newPathData.add(newCorner)
+        }
+
+        this.artworkData.polygons[selectedPolygonIndex].data.pathData = newPathData
+    }
+
+
+    fun moveCorner(event: MotionEvent)
     {
         val touchX = event.x
         val touchY = event.y
 
-
-            val newCorner = PointF(touchX, touchY)
+            val newCorner = PointF(touchX,
+                                   touchY)
             this.artworkData.polygons[selectedPolygonIndex].data.pathData[selectedCornerIndex] =
                     newCorner
             this.invalidate()
-
     }
 
 
