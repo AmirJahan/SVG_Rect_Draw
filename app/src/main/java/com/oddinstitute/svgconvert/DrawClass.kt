@@ -194,7 +194,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                     {
                         moveCorner(event)
                     }
-                    // we are moving a polygon
+                    // we are moving a polygons now
                     else if (selectedPolygonIndex != -1)
                     {
                         
