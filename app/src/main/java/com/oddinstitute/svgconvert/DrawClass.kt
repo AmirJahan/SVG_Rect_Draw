@@ -7,17 +7,23 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
-import kotlin.math.log
 
 
 class DrawView : View
 {
+    var viewSelected = false
+    var artworkEditingMode = false
+
     var artworkData: Artwork = Artwork()
 
     var mainPaint: Paint = Paint()
 
     var cornerSelectionHandle: RectF? = null
-    var selectionBorder: RectF? = null
+    var artworkSelectionHandle: RectF? = null
+
+
+    var polygonSelectionBorder: RectF? = null
+    var artworkSelectionBorder: RectF? = null
 
 
     var cornerEditingMode = false
@@ -85,27 +91,27 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
 //    }
 
 
-    var dX = 0f
-    var dY = 0f
-
-    fun onTouch(view: View, event: MotionEvent): Boolean
-    {
-        when (event.action)
-        {
-            MotionEvent.ACTION_DOWN ->
-            {
-                dX = view.x - event.rawX
-                dY = view.y - event.rawY
-            }
-            MotionEvent.ACTION_MOVE -> view.animate()
-                    .x(event.rawX + dX)
-                    .y(event.rawY + dY)
-                    .setDuration(0)
-                    .start()
-            else -> return false
-        }
-        return true
-    }
+//    var dX = 0f
+//    var dY = 0f
+//
+//    fun onTouch(view: View, event: MotionEvent): Boolean
+//    {
+//        when (event.action)
+//        {
+//            MotionEvent.ACTION_DOWN ->
+//            {
+//                dX = view.x - event.rawX
+//                dY = view.y - event.rawY
+//            }
+//            MotionEvent.ACTION_MOVE -> view.animate()
+//                    .x(event.rawX + dX)
+//                    .y(event.rawY + dY)
+//                    .setDuration(0)
+//                    .start()
+//            else -> return false
+//        }
+//        return true
+//    }
 
     var xStart = 0f
     var yStart = 0f
@@ -113,6 +119,8 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
     @SuppressLint("ClickableViewAccessibility")
     private fun onTouchListener(): OnTouchListener?
     {
+        if (!viewSelected)
+            return null
         return OnTouchListener { view, event ->
 
             val touchX = event.x
@@ -125,10 +133,22 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                     xStart = event.rawX
                     yStart = event.rawY
 
+                    // if view is selected, we worry about whether we tapped on the artwork handle
+                    if (viewSelected)
+                    {
+                        artworkSelectionHandle?.let {
+                            if (artworkSelectionHandle!!.contains(touchX,
+                                                                 touchY))
+                            {
+                                //we have to go into the polygon selection mode
+                                polygonSelectionMode = true
+                            }
+                        }
+                    }
 
                     // We are either in poly selection mode or corner editing mode
                     // the default is polygon selection mode
-                    if (polygonSelectionMode)
+                    else if (polygonSelectionMode)
                     {
                         // no polygon selected
                         if (selectedPolygonIndex == -1)
@@ -229,7 +249,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                     // here, we are moving a corner
 
 
-                    // a polygon is selected but we hhave NOT entered corner editing mode
+                    // a polygon is selected but we have NOT entered corner editing mode
                     if (selectedPolygonIndex != -1 && !cornerEditingMode)
                     {
                         moveAllCornersTo(deltaX, deltaY)
@@ -335,7 +355,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                 selectedPolygon = null
 
                 cornerSelectionHandle = null
-                selectionBorder = null
+                polygonSelectionBorder = null
 
                 polygonSelectionMode = true
                 polySelection(touchX,
@@ -490,6 +510,13 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
             drawCornerSelectionHandle ()
         }
 
+        // if the view is selected, we should draw the handle and border
+        if (viewSelected)
+        {
+            drawArtworkSelectionHandle()
+            drawArtworkBorder ()
+        }
+
         // if we are in the corner editing mode and moved
         // we have to update the selected polygon
         if (cornerEditingMode)
@@ -524,9 +551,9 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         }
 
 
-        selectionBorder?.let {
+        polygonSelectionBorder?.let {
             styleSelectionBorderPaint()
-            canvas.drawRoundRect(selectionBorder!!,
+            canvas.drawRoundRect(polygonSelectionBorder!!,
                                  8f,
                                  8f,
                                  mainPaint)
@@ -562,6 +589,33 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                 }
             }
         }
+
+
+        if (viewSelected)
+        {
+            styleNormalSelectionHandlePaint()
+
+//            if (cornerEditingMode)
+//                styleHighlightedSelectionHandlePaint()
+
+
+
+
+            artworkSelectionHandle?.let {
+                canvas.drawRoundRect(artworkSelectionHandle!!,
+                                     8f,
+                                     8f,
+                                     mainPaint)
+            }
+
+            artworkSelectionBorder?.let {
+                styleSelectionBorderPaint()
+                canvas.drawRoundRect(artworkSelectionBorder!!,
+                                     48f,
+                                     48f,
+                                     mainPaint)
+            }
+        }
     }
 
     fun drawSelectionBorder()
@@ -576,7 +630,22 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                           pathBounds.top - 10f,
                           pathBounds.right + 10f,
                           pathBounds.bottom + 10f)
-        selectionBorder = rectf
+        polygonSelectionBorder = rectf
+    }
+
+
+    fun drawArtworkBorder()
+    {
+        // DRAW THE BORDER
+
+        val width : Float = this.width.toFloat()
+        val height : Float = this.height.toFloat()
+
+        val rectf = RectF(0f,
+                          0f,
+                          width,
+                          height)
+        artworkSelectionBorder = rectf
     }
 
     fun drawCornerSelectionHandle()
@@ -597,6 +666,23 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
                           pathBounds.top + (height / 2f) + 25f)
 
         cornerSelectionHandle = rectf
+    }
+
+
+    fun drawArtworkSelectionHandle()
+    {
+        if (!viewSelected)
+            artworkSelectionHandle = null
+
+        val width = this.width
+        val height = this.height
+
+        val rectf = RectF(width -70f,
+                          (height / 2f) - 25f,
+                          width - 20f,
+                          (height / 2f) + 25f)
+
+        artworkSelectionHandle = rectf
     }
 
     fun styleNormalCornerPaint()
@@ -628,7 +714,7 @@ constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
     {
         // stroke
         mainPaint.style = Paint.Style.STROKE
-        mainPaint.strokeWidth = 3f
+        mainPaint.strokeWidth = 6f
         mainPaint.color =
                 Color.rgb(0,
                           0,
