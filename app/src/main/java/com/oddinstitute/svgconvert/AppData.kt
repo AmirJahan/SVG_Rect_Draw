@@ -10,13 +10,66 @@ class AppData
 {
     companion object
     {
+        fun new_temp_polyData (): PolygonData
+        {
+            val strokeWidth = "5"
+            val fillColor = "#00000000"
+            val strokeColor = "#ff0000"
+            val fillType = "evenOdd"
+            val pathData="M50,50 l50,-25 a25,25 -30,0 1,50 -25 l50,-25 a25,50 -30,0 1,50 -25 l50,-25 a25,75 -30,0 1,50 -25 l50,-25 a25,100 -30,0 1,50 -25 l50,-25"
+
+
+
+
+
+            var polyData: PolygonData = PolygonData()
+
+            val point1 =
+                    PointF(100f,
+                           100f)
+            val point2 =
+                    PointF(300f,
+                           100f)
+            val point3 =
+                    PointF(300f,
+                           300f)
+            val point4 =
+                    PointF(250f,
+                           290f)
+
+            val point5 =
+                    PointF(100f,
+                           300f)// M42.3803,56.9069
+
+            polyData.closed = true
+            polyData.pathData.add(point1)
+            polyData.pathData.add(point2)
+            polyData.pathData.add(point3)
+            polyData.pathData.add(point4)
+            polyData.pathData.add(point5)
+
+            polyData.fillColor = Color.BLUE
+            polyData.strokeColor = Color.parseColor("#979797")
+            polyData.strokeLineCap = Paint.Cap.ROUND
+            polyData.strokeWidth = 2.0f
+            polyData.fillType = Path.FillType.EVEN_ODD
+
+            return polyData
+        }
+
+
+
+
         fun readPolygonsFromFile () : ArrayList<PolygonData>
         {
-            val foundData = arrayListOf(makeTemp_1(),
-                                        makeTemp_2(),
-                                        makeTemp_3(),
-                                        makeTemp_4(),
-                                        makeTemp_5())
+//
+//            val foundData = arrayListOf(makeTemp_1(),
+//                                        makeTemp_2(),
+//                                        makeTemp_3(),
+//                                        makeTemp_4(),
+//                                        makeTemp_5())
+
+            val foundData = arrayListOf(new_temp_polyData())
 
             return foundData
         }

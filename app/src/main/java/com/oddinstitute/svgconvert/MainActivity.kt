@@ -43,26 +43,16 @@ class MainActivity : AppCompatActivity()
 
         val artwork1 = Artwork()
 
-        for (i in 0 until 3)
+        for (i in 0 until temp_polygon_data.count())
         {
             val poly = Polygon()
             poly.data = temp_polygon_data[i]
             artwork1.polygons.add(poly)
         }
 
-        val artwork2 = Artwork()
-
-        for (i in 3..4)
-        {
-            val poly = Polygon()
-            poly.data = temp_polygon_data[i]
-            artwork2.polygons.add(poly)
-        }
-
 
         val drawingView1 = DrawView(this,
-                                    arrayListOf(artwork1,
-                                                artwork2))
+                                    arrayListOf(artwork1))
 
         boom.addView(drawingView1)
     }
